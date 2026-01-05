@@ -1,0 +1,61 @@
+name: pos_admin
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.10.0
+  firebase_storage: ^11.2.7
+  cloud_firestore: ^4.13.6
+  provider: ^6.0.5
+  google_fonts: ^6.1.0
+  path_provider: ^2.1.1
+  shared_preferences: ^2.2.2
+  lottie: ^2.6.0
+  change_app_package_name: ^1.1.0
+  permission_handler: ^11.1.0
+  animated_text_kit: ^4.2.2
+  shimmer: ^3.0.0
+  url_launcher: ^6.1.14
+  audiofileplayer: ^2.1.1
+  flutter:
+    sdk: flutter
+  material_design_icons_flutter: ^7.0.7296
+  image_picker: ^1.0.4
+  fluttertoast: ^8.2.4
+  community_material_icon: ^5.9.55
+  foundation: ^0.0.5
+  url_strategy: ^0.2.0
+  responsive_grid_list: ^1.4.0
+  flutter_rating_bar: ^4.0.1
+  file_picker: ^8.0.0+1
+  cached_network_image: ^3.3.0
+  image_network: ^2.5.4+1
+  msh_checkbox: ^2.0.1
+  excel: ^4.0.6
+  syncfusion_flutter_pdf: ^25.2.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
+    - assets/images/
+    - assets/lottie/
+
+  fonts:
+    - family: fontmain
+      fonts:
+        - asset: fonts/SometypeMono-Regular.ttf
+    - family: tabfont
+      fonts:
+        - asset: fonts/PlaypenSans-SemiBold.ttf
