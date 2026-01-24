@@ -22,20 +22,51 @@ class AddItemScreen extends StatefulWidget {
 }
 
 class _AddItemScreenState extends State<AddItemScreen> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _codeController = TextEditingController();
-  final TextEditingController _stockController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-
+  bool isChecked = false;
   bool isLoading = true;
   bool isUploading = false;
-  String selectedDepartment = '';
+  String selectedOption1 = '';
+  String selectedOption2 = '';
+  String selectedOption3 = '';
+  String baseVarient = 'Kg';
+  String selectedVariantUnit = 'Kg';
+  String priceType = "Fixed";
+  List<String> activeDepartments = [];
+  bool enableVariants = false;
+  bool enableAddons = false;
+
+  List<String> baseVarients = ['Kg', 'Liter', 'Item Per Pc'];
+  List<Map<String, dynamic>> variants = [];
+  List<Map<String, dynamic>> addons = [];
+
+  String? selectedSize;
+
+  final List<String> sizeOptions = [
+    'Small',
+    'Medium',
+    'Large',
+    'Extra Large',
+  ];
+
+  final FirebaseFirestore firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  final TextEditingController foodNameController = TextEditingController();
+  final TextEditingController foodPriceController = TextEditingController();
+  final TextEditingController foodPrice2Controller = TextEditingController();
+  final TextEditingController foodPrice3Controller = TextEditingController();
+  final TextEditingController foodCodeController = TextEditingController();
+  final TextEditingController foodStockController = TextEditingController();
+  final TextEditingController foodDescriptionController = TextEditingController();
+  final TextEditingController variantQtyController = TextEditingController();
+  final TextEditingController variantPriceController = TextEditingController();
+  final TextEditingController addonNameController = TextEditingController();
+  final TextEditingController addonPriceController = TextEditingController();
+
+  String selectedDepartment = '';
   File? selectedImage;
   File? pdfFile;
-  List<String> activeDepartments = [];
 
   @override
   void initState() {
@@ -45,11 +76,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _priceController.dispose();
-    _codeController.dispose();
-    _stockController.dispose();
-    _descriptionController.dispose();
+    // foodNameController.dispose();
+    // foodPriceController.dispose();
+    // foodCodeController.dispose();
+    // foodStockController.dispose();
+    // foodDescriptionController.dispose();
     super.dispose();
   }
 
@@ -197,7 +228,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
                 child: CircularProgressIndicator(color: primaryColor),
               )
             : SingleChildScrollView(
-                padding: EdgeInsets.all(s.scale(20)),
+                padding: EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -220,7 +251,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
               ),
       ),
       bottomNavigationBar: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 0.0).copyWith(bottom: s.scale(10.0)),
+        padding: const EdgeInsets.all(12),
         child: _buildSubmitButton(s),
       ),
     );
@@ -343,41 +374,392 @@ class _AddItemScreenState extends State<AddItemScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Item Details',
-          style: TextStyle(
-            fontSize: s.scale(20),
-            fontWeight: FontWeight.bold,
-            color: black,
-          ),
+        // Department dropdown
+        AppDropdown(
+          heading: 'Select Department',
+          items: activeDepartments,
+          value: selectedDepartment.isEmpty ? null : selectedDepartment,
+          hint: "Choose department",
+          onChanged: (val) {
+            setState(() {
+              selectedDepartment = val;
+            });
+          },
         ),
-        SizedBox(height: s.scale(16)),
 
         MyTextField(
-          controller: _nameController,
+          controller: foodNameController,
           hintText: 'Enter item name',
           cstmLable: 'Item Name',
           prefixIcon: Icons.shopping_bag_outlined,
         ),
 
         MyTextField(
-          controller: _codeController,
+          controller: foodCodeController,
           hintText: 'Enter item code',
           cstmLable: 'Item Code',
           keyboardType: TextInputType.number,
           prefixIcon: Icons.qr_code_rounded,
         ),
+        AppDropdown(
+          heading: 'Item Unit',
+          items: baseVarients,
+          value: baseVarient.isEmpty ? null : baseVarient,
+          hint: "Choose department",
+          onChanged: (val) {
+            setState(() {
+              baseVarient = val;
+            });
+          },
+        ),
 
         MyTextField(
-          controller: _priceController,
-          hintText: 'Enter item price',
-          cstmLable: 'Item Price (₹)',
+          controller: foodPriceController,
+          hintText: 'Enter item price 1 here',
+          cstmLable: 'Item Price - 1 (₹)',
           keyboardType: TextInputType.number,
           prefixIcon: Icons.currency_rupee_rounded,
         ),
 
         MyTextField(
-          controller: _stockController,
+          controller: foodPrice2Controller,
+          hintText: 'Enter item price 2 here',
+          cstmLable: 'Item Price - 2 (₹)',
+          keyboardType: TextInputType.number,
+          prefixIcon: Icons.currency_rupee_rounded,
+        ),
+        MyTextField(
+          controller: foodPrice3Controller,
+          hintText: 'Enter item price 3 here',
+          cstmLable: 'Item Price - 3 (₹)',
+          keyboardType: TextInputType.number,
+          prefixIcon: Icons.currency_rupee_rounded,
+        ),
+
+        Row(
+          children: [
+            const Text(
+              "Price Type",
+              style: TextStyle(
+                letterSpacing: 1.3,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const Spacer(),
+            ChoiceChip(
+              selectedColor: primaryColor,
+              showCheckmark: false,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              label: const Text("Fixed"),
+              labelStyle: TextStyle(
+                color: priceType == "Fixed" ? Colors.white : primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+              selected: priceType == "Fixed",
+              onSelected: (v) {
+                setState(() {
+                  priceType = "Fixed";
+                  foodPriceController.clear();
+                  foodPrice2Controller.clear();
+                  foodPrice3Controller.clear();
+                });
+              },
+            ),
+            const SizedBox(
+              width: 7,
+            ),
+            ChoiceChip(
+              selectedColor: primaryColor,
+              showCheckmark: false,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              label: const Text("Open"),
+              labelStyle: TextStyle(
+                color: priceType == "Open" ? Colors.white : primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+              selected: priceType == "Open",
+              onSelected: (v) {
+                setState(() {
+                  priceType = "Open";
+                  foodPriceController.text = "0";
+                  foodPrice2Controller.text = "0";
+                  foodPrice3Controller.text = "0";
+                });
+              },
+            ),
+          ],
+        ),
+
+        // ================= MANUAL VARIANTS =================
+        const SizedBox(height: 10),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text(
+            "Add Variants",
+            style: TextStyle(
+              letterSpacing: 1.3,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          value: enableVariants,
+          onChanged: (v) {
+            setState(() {
+              enableVariants = v!;
+              if (!enableVariants) {
+                variants.clear();
+                variantQtyController.clear();
+                variantPriceController.clear();
+                selectedSize = null;
+              }
+            });
+          },
+        ),
+
+        const SizedBox(height: 10),
+
+        if (enableVariants) ...[
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Select Unit',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 5),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: DropdownButtonFormField<String>(
+                  value: selectedVariantUnit,
+                  items: ['Kg', 'Gm', 'Ml', 'Liter', 'Item Per Pc', 'Size']
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e,
+                          child: Text(e),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    if (v == null) return;
+                    setState(() {
+                      selectedVariantUnit = v;
+                      selectedSize = null;
+                      variantQtyController.clear();
+                    });
+                  },
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // ================= SIZE SELECTION =================
+          if (selectedVariantUnit == 'Size') ...[
+            const SizedBox(height: 15),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select Size',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+                const SizedBox(height: 5),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButtonFormField<String>(
+                    value: selectedSize,
+                    items: sizeOptions
+                        .map(
+                          (e) => DropdownMenuItem(
+                            value: e,
+                            child: Text(e),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) {
+                      setState(() => selectedSize = v);
+                    },
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          // ================= QTY INPUT =================
+          if (selectedVariantUnit != 'Size') ...[
+            const SizedBox(height: 15),
+            MyTextField(
+              controller: variantQtyController,
+              keyboardType: TextInputType.number,
+              hintText: 'Qty',
+              cstmLable: 'Quantity',
+            ),
+          ],
+          const SizedBox(height: 15),
+          MyTextField(
+            controller: variantPriceController,
+            keyboardType: TextInputType.number,
+            hintText: 'Enter variant price manually',
+            cstmLable: 'Variant Price',
+          ),
+
+          // ================= ADD MANUAL VARIANT =================
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () {
+                if (variantPriceController.text.isEmpty) return;
+                if (selectedVariantUnit == 'Size' && selectedSize == null) return;
+
+                setState(() {
+                  variants.add({
+                    'unitType': selectedVariantUnit,
+                    'size': selectedVariantUnit == 'Size' ? selectedSize : null,
+                    'qty': selectedVariantUnit == 'Size' ? 1 : double.parse(variantQtyController.text),
+                    'price': double.parse(variantPriceController.text),
+                  });
+                });
+
+                variantQtyController.clear();
+                variantPriceController.clear();
+                selectedSize = null;
+              },
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 15),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30),
+                  color: primaryColor,
+                ),
+                child: const Text(
+                  'ADD VARIANT',
+                  style: TextStyle(color: Colors.white, fontFamily: "tabfont"),
+                ),
+              ),
+            ),
+          ),
+
+          // ================= VARIANT LIST =================
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: variants.length,
+            itemBuilder: (context, index) {
+              final v = variants[index];
+              return ListTile(
+                title: Text(
+                  v['unitType'] == 'Size' ? v['size'] : "${v['qty']} ${v['unitType']}",
+                ),
+                trailing: Text(
+                  "₹${v['price']}",
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
+              );
+            },
+          ),
+        ],
+
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text(
+            "Add-Ons",
+            style: TextStyle(
+              letterSpacing: 1.3,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+          value: enableAddons,
+          onChanged: (v) {
+            setState(() {
+              enableAddons = v!;
+              if (!enableAddons) addons.clear();
+            });
+          },
+        ),
+
+        if (enableAddons) ...[
+          Column(
+            children: [
+              MyTextField(
+                controller: addonNameController,
+                hintText: "Enter Addon Name",
+                cstmLable: "Addon Name",
+              ),
+              MyTextField(
+                controller: addonPriceController,
+                keyboardType: TextInputType.number,
+                hintText: "Enter Addon Price",
+                cstmLable: "Addon Price",
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () {
+                    if (addonNameController.text.isEmpty || addonPriceController.text.isEmpty) return;
+
+                    setState(() {
+                      addons.add({
+                        "name": addonNameController.text,
+                        "price": double.parse(addonPriceController.text),
+                      });
+                    });
+
+                    addonNameController.clear();
+                    addonPriceController.clear();
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 15),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      color: primaryColor,
+                    ),
+                    child: const Text(
+                      'ADD ADDON',
+                      style: TextStyle(color: Colors.white, fontFamily: "tabfont"),
+                    ),
+                  ),
+                ),
+              ),
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: addons.length,
+                itemBuilder: (c, i) {
+                  return ListTile(
+                    title: Text(addons[i]['name']),
+                    trailing: Text("₹${addons[i]['price']}"),
+                  );
+                },
+              )
+            ],
+          )
+        ],
+
+        MyTextField(
+          controller: foodStockController,
           hintText: 'Enter stock quantity',
           cstmLable: 'Stock Quantity',
           keyboardType: TextInputType.number,
@@ -385,79 +767,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
         ),
 
         MyTextField(
-          controller: _descriptionController,
+          controller: foodDescriptionController,
           hintText: 'Enter item description',
           cstmLable: 'Description',
           prefixIcon: Icons.description_outlined,
         ),
-
-        SizedBox(height: s.scale(8)),
-
-        // Department dropdown
-        _buildDepartmentDropdown(s),
       ],
-    );
-  }
-
-  Widget _buildDepartmentDropdown(Screen s) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Select Department',
-            style: TextStyle(
-              letterSpacing: 1.3,
-              fontSize: 14,
-              fontFamily: 'fontmain',
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          SizedBox(height: s.scale(8)),
-          Card(
-            elevation: 5,
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  // Ensure value is null when not present in items to avoid Dropdown assertion
-                  value: (selectedDepartment.isEmpty || !activeDepartments.contains(selectedDepartment)) ? null : selectedDepartment,
-                  isExpanded: true,
-                  hint: const Text(
-                    'Select department',
-                    style: TextStyle(color: grey),
-                  ),
-                  items: activeDepartments.map((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(
-                        value,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      setState(() {
-                        selectedDepartment = newValue;
-                      });
-                    }
-                  },
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -477,13 +792,12 @@ class _AddItemScreenState extends State<AddItemScreen> {
         ),
         child: isUploading
             ? const SizedBox(
-                width: 24,
-                height: 24,
+                height: 20,
+                width: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(white),
-                ),
-              )
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ))
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -504,11 +818,11 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   void _clearControllers() {
-    _nameController.clear();
-    _priceController.clear();
-    _codeController.clear();
-    _stockController.clear();
-    _descriptionController.clear();
+    // foodNameController.clear();
+    // foodPriceController.clear();
+    // foodCodeController.clear();
+    // foodStockController.clear();
+    // foodDescriptionController.clear();
   }
 
   Future<void> _pickImageFromGallery() async {
@@ -548,65 +862,118 @@ class _AddItemScreenState extends State<AddItemScreen> {
     }
   }
 
-  void _handleSubmit() {
-    final name = _nameController.text.trim();
-    final code = _codeController.text.trim();
-    final price = _priceController.text.trim();
-    final stock = _stockController.text.trim();
-    final description = _descriptionController.text.trim();
+  Future<void> _handleSubmit() async {
+    final String foodName = foodNameController.text.trim();
+    final String foodCode = foodCodeController.text.trim();
+    final String foodPrice = foodPriceController.text.trim();
+    final String foodPrice2 = foodPrice2Controller.text.trim();
+    final String foodPrice3 = foodPrice3Controller.text.trim();
+    final String stocks = foodStockController.text.trim();
+    final String description = foodDescriptionController.text.trim();
+    final bool isHot = isChecked;
 
-    if (name.isEmpty || code.isEmpty || price.isEmpty || stock.isEmpty) {
+    if (foodName.isEmpty || foodCode.isEmpty || foodPrice.isEmpty || stocks.isEmpty) {
       _showSnackBar('Please fill all required fields');
       return;
     }
 
-    setState(() {
-      isUploading = true;
-    });
+    setState(() => isUploading = true);
 
-    _createItem(name, code, price, stock, description).then((_) {
-      setState(() {
-        isUploading = false;
-      });
-    });
+    try {
+      await _createItem(
+        context,
+        foodName,
+        foodCode,
+        foodPrice,
+        foodPrice2,
+        foodPrice3,
+        stocks,
+        description,
+        isHot,
+        widget.uid,
+      );
+    } finally {
+      setState(() => isUploading = false);
+    }
   }
 
   Future<void> _createItem(
-    String name,
-    String code,
-    String price,
-    String stock,
-    String description,
+    BuildContext context,
+    String foodName,
+    String foodCode,
+    String foodPrice,
+    String foodPrice2,
+    String foodPrice3,
+    String foodStock,
+    String foodDescription,
+    bool isHot,
+    String phoneNo,
   ) async {
     try {
       User? user = _auth.currentUser;
-      if (user == null) {
-        _showSnackBar('User not authenticated');
-        return;
-      }
+      if (user == null) return;
 
-      String imagePath = await _uploadImageToStorage(selectedImage);
+      final formattedVariants = variants.map((v) {
+        return {
+          'qty': v['qty'],
+          'unit': v['unit'] ?? v['unitType'],
+          'price': v['price'],
+          'size': v['size'] ?? '',
+        };
+      }).toList();
 
-      await _firestore.collection('AllAdmins').doc(widget.uid).collection('foodItems').add({
-        'name': name,
-        'foodCode': code,
-        'price': price,
-        'uid': widget.uid,
+      String imagePath = selectedImage != null ? await _uploadImageToStorage(selectedImage) : '';
+
+      final foodCollection = _firestore.collection('AllAdmins').doc(widget.uid).collection('foodItems');
+
+      await foodCollection.add({
+        'name': foodName,
+        'foodCode': foodCode,
+        'price': priceType == "Open" ? 0 : double.tryParse(foodPrice) ?? 0,
+        'price2': priceType == "Open" ? 0 : double.tryParse(foodPrice2) ?? 0,
+        'price3': priceType == "Open" ? 0 : double.tryParse(foodPrice3) ?? 0,
+        'priceType': priceType,
+        'baseVariant': baseVarient,
+        'variants': formattedVariants,
+        'addons': addons,
+        'uid': phoneNo,
         'imagePath': imagePath,
-        'department': selectedDepartment,
-        'stocks': stock,
-        'description': description,
-        'createdAt': DateTime.now().toString(),
-        'isHot': false,
+        'department': selectedOption1,
+        'tax': selectedOption2,
+        'stocks': int.tryParse(foodStock) ?? 0,
+        'description': foodDescription,
+        'isHot': isHot,
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
-      _showSnackBar('Item added successfully!');
-      _clearControllers();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Item added successfully')),
+      );
+
+      /// Clear form
+      foodNameController.clear();
+      foodCodeController.clear();
+      foodPriceController.clear();
+      foodPrice2Controller.clear();
+      foodPrice3Controller.clear();
+      foodStockController.clear();
+      foodDescriptionController.clear();
+      variantQtyController.clear();
+      variantPriceController.clear();
+
       setState(() {
+        variants.clear();
+        addons.clear();
+        enableVariants = false;
+        enableAddons = false;
+        priceType = "Fixed";
         selectedImage = null;
       });
     } catch (e) {
-      _showSnackBar('Error adding item: $e');
+      debugPrint('Error creating food item: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Something went wrong')),
+      );
     }
   }
 
@@ -639,4 +1006,3 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 }
 
-// Bulk upload is now implemented in a full screen widget: see bulkUploadScreen.dart
