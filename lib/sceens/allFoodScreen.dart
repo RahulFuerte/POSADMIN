@@ -27,7 +27,12 @@ class _AllFoodsScreenState extends State<AllFoodsScreen> {
 
   Future<void> _deleteItem(String itemId) async {
     try {
-      await FirebaseFirestore.instance.collection('AllAdmins').doc(widget.documentId).collection('foodItems').doc(itemId).delete();
+      await FirebaseFirestore.instance
+          .collection('AllAdmins')
+          .doc(widget.documentId)
+          .collection('foodItems')
+          .doc(itemId)
+          .delete();
 
       Fluttertoast.showToast(
         msg: 'Item deleted successfully!',
@@ -129,7 +134,12 @@ class _AllFoodsScreenState extends State<AllFoodsScreen> {
         ),
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('AllAdmins').doc(widget.documentId).collection('foodItems').orderBy('createdAt', descending: true).snapshots(),
+            stream: FirebaseFirestore.instance
+                .collection('AllAdmins')
+                .doc(widget.documentId)
+                .collection('foodItems')
+                .orderBy('createdAt', descending: true)
+                .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
@@ -256,7 +266,12 @@ class _AllFoodsScreenState extends State<AllFoodsScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 41),
             child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('AllAdmins').doc(widget.documentId).collection('foodItems').orderBy('createdAt', descending: true).snapshots(),
+              stream: FirebaseFirestore.instance
+                  .collection('AllAdmins')
+                  .doc(widget.documentId)
+                  .collection('foodItems')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -368,7 +383,7 @@ class EnhancedFoodItemWidget extends StatelessWidget {
           children: [
             // Image Section
             ClipRRect(
-              borderRadius: const BorderRadius.only(
+              borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(15),
                 bottomLeft: Radius.circular(15),
               ),
@@ -377,12 +392,12 @@ class EnhancedFoodItemWidget extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: imagePath,
                   fit: BoxFit.cover,
-                  placeholder: (context, url) => const Center(
+                  placeholder: (context, url) => Center(
                     child: CircularProgressIndicator(color: primaryColor),
                   ),
                   errorWidget: (context, url, error) => Container(
                     color: Colors.grey[200],
-                    child: const Icon(Icons.fastfood, size: 40, color: Colors.grey),
+                    child: Icon(Icons.fastfood, size: 40, color: Colors.grey),
                   ),
                 ),
               ),

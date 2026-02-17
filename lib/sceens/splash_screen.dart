@@ -19,8 +19,7 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -28,29 +27,29 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animations
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
       ),
     );
-    
+
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
       ),
     );
-    
+
     _animationController.forward();
-    
+
     // Navigate after delay
     _navigateAfterDelay();
   }
@@ -62,23 +61,18 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateAfterDelay() async {
-    await Future.delayed(const Duration(seconds: 10));
-    
     if (!mounted) return;
-    
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool isLogged = prefs.getBool('isLogged') ?? false;
     String myPhone = prefs.getString('myPhone') ?? '';
 
     if (isLogged) {
       try {
-        final doc = await FirebaseFirestore.instance
-            .collection('MainAdmin')
-            .doc(myPhone)
-            .get();
-            
+        final doc = await FirebaseFirestore.instance.collection('MainAdmin').doc(myPhone).get();
+
         if (!mounted) return;
-        
+
         if (doc.exists) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
@@ -118,7 +112,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final Screen s = Screen(context);
-    
+
     return Scaffold(
       backgroundColor: white,
       appBar: AppBar(
@@ -142,73 +136,77 @@ class _SplashScreenState extends State<SplashScreen>
           child: ScaleTransition(
             scale: _scaleAnimation,
             child: SafeArea(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Spacer(flex: 2),
-                  
-                  // App Name with branding font
-                  Text(
-                    'POS Admin',
-                    style: GoogleFonts.alfaSlabOne(
-                      fontSize: s.scale(35),
-                      fontWeight: FontWeight.w500,
-                      color: primaryColor,
-                    ),
-                  ),
-                  
-                  SizedBox(height: s.scale(8)),
-                  
-                  // Tagline
-                  Text(
-                    'Management System',
-                    style: TextStyle(
-                      fontFamily: 'fontmain',
-                      fontSize: s.scale(16),
-                      color: grey,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  
-                  SizedBox(height: s.scale(40)),
-                  
-                  // Lottie Animation
-                  Lottie.asset(
-                    "$lottiePath/splashScreenAnimation.json",
-                    fit: BoxFit.contain,
-                    width: s.width * 0.7,
-                    frameRate: FrameRate(90),
-                  ),
-                  
-                  const Spacer(flex: 2),
-                  
-                  // Bottom branding
-                  Column(
-                    children: [
-                      Image.asset(
-                        "$imagesPath/bbblogo.png",
-                        height: s.scale(45),
+              child: SizedBox(
+                width: double.infinity,
+                height: double.infinity,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Spacer(flex: 2),
+                
+                    // App Name with branding font
+                    Text(
+                      'POS Admin',
+                      style: GoogleFonts.alfaSlabOne(
+                        fontSize: s.scale(35),
+                        fontWeight: FontWeight.w500,
+                        color: primaryColor,
                       ),
-                      SizedBox(height: s.scale(12)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: s.scale(32)),
-                        child: Text(
-                          "Streamlining Success, One Bill at a Time.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontFamily: 'fontmain',
-                            color: grey,
-                            fontSize: s.scale(13),
-                            fontWeight: FontWeight.w400,
+                    ),
+                
+                    SizedBox(height: s.scale(8)),
+                
+                    // Tagline
+                    Text(
+                      'Management System',
+                      style: TextStyle(
+                        fontFamily: 'fontmain',
+                        fontSize: s.scale(16),
+                        color: grey,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                
+                    SizedBox(height: s.scale(40)),
+                
+                    // Lottie Animation
+                    Lottie.asset(
+                      "$lottiePath/splashScreenAnimation.json",
+                      fit: BoxFit.contain,
+                      width: s.width * 0.7,
+                      frameRate: FrameRate(90),
+                    ),
+                
+                    const Spacer(flex: 2),
+                
+                    // Bottom branding
+                    Column(
+                      children: [
+                        Image.asset(
+                          "$imagesPath/bbblogo.png",
+                          height: s.scale(45),
+                        ),
+                        SizedBox(height: s.scale(12)),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: s.scale(32)),
+                          child: Text(
+                            "Streamlining Success, One Bill at a Time.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'fontmain',
+                              color: grey,
+                              fontSize: s.scale(13),
+                              fontWeight: FontWeight.w400,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  
-                  SizedBox(height: s.scale(40)),
-                ],
+                      ],
+                    ),
+                
+                    SizedBox(height: s.scale(40)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -258,9 +256,9 @@ class _SplashScreenState extends State<SplashScreen>
                       color: white,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Title
                   Text(
                     "POS Admin Panel",
@@ -270,9 +268,9 @@ class _SplashScreenState extends State<SplashScreen>
                       color: white,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Subtitle
                   Text(
                     "Restaurant Management System",
@@ -284,9 +282,9 @@ class _SplashScreenState extends State<SplashScreen>
                       letterSpacing: 1,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Description
                   Text(
                     "Designed for restaurant management - empowering managers, owners, and employees with better tools for an exceptional customer experience.",
@@ -298,9 +296,9 @@ class _SplashScreenState extends State<SplashScreen>
                       height: 1.6,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 48),
-                  
+
                   // Loading indicator
                   Row(
                     children: [
@@ -329,7 +327,7 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             ),
           ),
-          
+
           // Right side - Animation
           Expanded(
             flex: 1,
