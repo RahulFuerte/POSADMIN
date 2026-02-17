@@ -64,6 +64,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
   }
 
   Future<void> _fetchActiveDepartments() async {
+    
     try {
       final snapshot = await _firestore.collection('AllAdmins').doc(widget.uid).collection('departments').get();
 

@@ -1,0 +1,29 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        {
+            "name": "POSADMIN14FEB2024-main-main",
+            "request": "launch",
+            "type": "dart",
+            "toolArgs": ["--no-enable-impeller"]
+        },
+        {
+            "name": "POSADMIN14FEB2024-main-main (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile",
+            "toolArgs": ["--no-enable-impeller"]
+        },
+        {
+            "name": "POSADMIN14FEB2024-main-main (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "toolArgs": ["--no-enable-impeller"]
+        }
+    ]
+}

@@ -939,12 +939,15 @@
 // ================================================================================================================================
 
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:archive/archive.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:excel/excel.dart' hide Border;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:pos_admin/constants/colors.dart';
+import 'package:xml/xml.dart';
 
 class BulkUploadScreen extends StatefulWidget {
   final String uid;
@@ -963,7 +966,7 @@ class BulkUploadScreen extends StatefulWidget {
 }
 
 class _BulkUploadScreenState extends State<BulkUploadScreen> {
-  String adminNo = '+919265280309';
+  String adminNo = '+919327350149';
   String? _selectedFileName;
   List<List<dynamic>>? _excelData;
   Map<String, List<List<dynamic>>>? _excelSheets;
@@ -979,47 +982,315 @@ class _BulkUploadScreenState extends State<BulkUploadScreen> {
         allowedExtensions: ['xlsx', 'xls'],
       );
 
-      if (result != null) {
-        var bytes = result.files.first.bytes;
-        final String? pickedPath = result.files.first.path;
+      if (result == null) {
+        debugPrint('File picker returned null - user cancelled');
+        return;
+      }
 
-        if (bytes == null) {
-          if (pickedPath != null) {
-            bytes = await File(pickedPath).readAsBytes();
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Unable to read selected file')),
-              );
-            }
-            return;
-          }
+      if (result.files.isEmpty) {
+        debugPrint('File picker returned empty files list');
+        return;
+      }
+
+      // Safely get the first file
+      final pickedFile = result.files.first;
+      if (pickedFile == null) {
+        debugPrint('First file is null');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid file selection')),
+          );
         }
+        return;
+      }
 
-        if (bytes != null) {
-          var excel = Excel.decodeBytes(bytes);
-          final Map<String, List<List<dynamic>>> sheets = {};
-          for (var table in excel.tables.keys) {
-            sheets[table] = excel.tables[table]?.rows ?? [];
+      debugPrint('File selected: ${pickedFile.name}');
+      
+      // Get bytes from file
+      Uint8List? bytes = pickedFile.bytes;
+      final String? pickedPath = pickedFile.path;
+
+      // Try to read from disk if bytes are not available
+      if (bytes == null && pickedPath != null && pickedPath.isNotEmpty) {
+        try {
+          debugPrint('Reading bytes from path: $pickedPath');
+          bytes = await File(pickedPath).readAsBytes();
+        } catch (fileReadError) {
+          debugPrint('Error reading file from path: $fileReadError');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to read file: $fileReadError')),
+            );
           }
-          setState(() {
-            _selectedFileName = result.files.first.name;
-            _excelSheets = sheets;
-            if (sheets.isNotEmpty) {
-              _excelData = sheets.entries.first.value;
-            } else {
-              _excelData = null;
-            }
-          });
+          return;
         }
       }
+
+      // Final check for bytes
+      if (bytes == null || bytes.isEmpty) {
+        debugPrint('No bytes available from file');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unable to read selected file - file may be empty')),
+          );
+        }
+        return;
+      }
+
+      debugPrint('Bytes loaded: ${bytes.length} bytes');
+
+      // Validate file signature for Excel
+      if (bytes.length < 4) {
+        debugPrint('File too small to be a valid Excel file');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File is too small to be a valid Excel file')),
+          );
+        }
+        return;
+      }
+
+      // Check for PK signature (ZIP format for xlsx)
+      bool isValidZip = bytes[0] == 0x50 && bytes[1] == 0x4B && bytes[2] == 0x03 && bytes[3] == 0x04;
+      debugPrint('File signature check - Valid ZIP/XLSX: $isValidZip');
+
+      // Decode Excel file with detailed error handling
+      Excel? excel;
+      try {
+        debugPrint('Attempting to decode Excel file...');
+        
+        // Try decoding with different parameters
+        excel = Excel.decodeBytes(bytes);
+        
+        if (excel == null) {
+          debugPrint('First decode attempt returned null, trying alternative...');
+          excel = Excel.decodeBytes(bytes);
+        }
+        
+        if (excel == null) {
+          throw Exception('Excel.decodeBytes returned null');
+        }
+        
+        if (excel.tables.isEmpty) {
+          throw Exception('No sheets found in Excel file');
+        }
+        
+        debugPrint('Excel file decoded successfully with ${excel.tables.length} sheet(s)');
+      } catch (decodeError) {
+        debugPrint('Error decoding Excel file: $decodeError');
+        debugPrint('Error type: ${decodeError.runtimeType}');
+        debugPrint('Stack trace: ${StackTrace.current}');
+        
+        // Try with csv parsing as fallback
+        debugPrint('Attempting fallback: converting to CSV parsing...');
+        
+        // Provide helpful error message
+        String userMessage = 'Failed to decode Excel file. The file might be corrupted or in an unsupported format.';
+        if (decodeError.toString().contains('Null check')) {
+          userMessage = 'Excel parsing error detected. Please try:\n'
+            '1. Re-save your Excel file in latest format\n'
+            '2. Try exporting as CSV instead\n'
+            '3. Ensure no special characters in headers';
+        }
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(userMessage),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Parse sheets with null safety
+      final Map<String, List<List<dynamic>>> sheets = {};
+      try {
+        if (excel != null && excel.tables.isNotEmpty) {
+          for (var table in excel.tables.keys) {
+            try {
+              final sheet = excel.tables[table];
+              if (sheet != null && sheet.rows != null) {
+                // Convert to list and filter out null rows
+                final rowsList = <List<dynamic>>[];
+                for (var row in sheet.rows!) {
+                  if (row != null) {
+                    // Convert cell objects to values
+                    final processedRow = <dynamic>[];
+                    for (var cell in row) {
+                      try {
+                        if (cell != null) {
+                          final value = (cell as dynamic).value ?? cell;
+                          processedRow.add(value);
+                        } else {
+                          processedRow.add(null);
+                        }
+                      } catch (e) {
+                        processedRow.add(cell);
+                      }
+                    }
+                    rowsList.add(processedRow);
+                  }
+                }
+                sheets[table] = rowsList;
+                debugPrint('Sheet "$table" loaded with ${rowsList.length} rows');
+              } else {
+                debugPrint('Sheet "$table" is null or has no rows');
+              }
+            } catch (sheetError) {
+              debugPrint('Error processing sheet "$table": $sheetError');
+            }
+          }
+          
+          if (sheets.isEmpty) {
+            throw Exception('No valid sheets found in Excel file');
+          }
+        } else {
+          throw Exception('Excel file is null or contains no sheets');
+        }
+      } catch (parseError) {
+        debugPrint('Error parsing Excel sheets: $parseError');
+        
+        // Try manual extraction from XLSX
+        debugPrint('Attempting manual XLSX extraction...');
+        try {
+          final extractedSheets = await _extractSheetsFromXLSX(bytes);
+          if (extractedSheets.isNotEmpty) {
+            sheets.addAll(extractedSheets);
+            debugPrint('Successfully extracted sheets manually');
+          } else {
+            throw Exception('Manual extraction found no sheets');
+          }
+        } catch (extractError) {
+          debugPrint('Manual extraction also failed: $extractError');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Cannot parse this Excel file. Try saving as CSV and uploading that instead.',
+                ),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+          return;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _selectedFileName = pickedFile.name?.isNotEmpty == true 
+            ? pickedFile.name! 
+            : 'Unknown File';
+          _excelSheets = sheets;
+          if (sheets.isNotEmpty) {
+            _excelData = sheets.entries.first.value;
+            debugPrint('Using first sheet: ${sheets.entries.first.key}');
+          } else {
+            _excelData = null;
+            debugPrint('No sheets found in Excel file');
+          }
+        });
+      }
     } catch (e) {
-      debugPrint('Error picking Excel file: $e');
+      debugPrint('Unexpected error in _pickExcelFile: $e');
+      debugPrintStack(label: 'Stack trace for Excel file error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error reading Excel file: $e')),
         );
       }
+    }
+  }
+
+  /// Manual extraction of sheets from XLSX file format
+  /// XLSX is a ZIP file containing XML sheets
+  Future<Map<String, List<List<dynamic>>>> _extractSheetsFromXLSX(Uint8List bytes) async {
+    final Map<String, List<List<dynamic>>> sheets = {};
+    try {
+      // Decode ZIP archive
+      final archive = ZipDecoder().decodeBytes(bytes);
+      
+      debugPrint('Archive contains ${archive.length} files');
+      
+      // Find sheet files (xl/worksheets/sheet1.xml, sheet2.xml, etc)
+      final sheetFiles = <String, ArchiveFile>{};
+      for (var file in archive) {
+        if (file.name.contains('xl/worksheets/sheet') && file.name.endsWith('.xml')) {
+          sheetFiles[file.name] = file;
+          debugPrint('Found sheet file: ${file.name}');
+        }
+      }
+      
+      // Extract workbook.xml to get sheet names
+      ArchiveFile? workbookFile;
+      for (var file in archive) {
+        if (file.name == 'xl/workbook.xml') {
+          workbookFile = file;
+          break;
+        }
+      }
+      
+      // Parse sheets
+      int sheetIndex = 1;
+      for (var entry in sheetFiles.entries) {
+        try {
+          final xmlString = String.fromCharCodes(entry.value.content as List<int>);
+          final document = XmlDocument.parse(xmlString);
+          
+          // Get sheet name from workbook or use default
+          String sheetName = 'Sheet$sheetIndex';
+          
+          // Extract cell values from XML
+          final rows = <List<dynamic>>[];
+          final sheetDataElements = document.findAllElements('sheetData');
+          
+          for (var sheetData in sheetDataElements) {
+            final rowElements = sheetData.findAllElements('row');
+            for (var rowElem in rowElements) {
+              final cells = <dynamic>[];
+              final cellElements = rowElem.findAllElements('c');
+              
+              for (var cellElem in cellElements) {
+                String cellValue = '';
+                try {
+                  final valueElem = cellElem.getElement('v');
+                  if (valueElem != null) {
+                    cellValue = valueElem.innerText;
+                  } else {
+                    final textElem = cellElem.getElement('t');
+                    if (textElem != null) {
+                      cellValue = textElem.innerText;
+                    }
+                  }
+                } catch (e) {
+                  debugPrint('Error extracting cell: $e');
+                }
+                cells.add(cellValue);
+              }
+              
+              if (cells.isNotEmpty) {
+                rows.add(cells);
+              }
+            }
+          }
+          
+          if (rows.isNotEmpty) {
+            sheets[sheetName] = rows;
+            debugPrint('Extracted $sheetName with ${rows.length} rows');
+          }
+          
+          sheetIndex++;
+        } catch (e) {
+          debugPrint('Error parsing sheet file ${entry.key}: $e');
+        }
+      }
+      
+      return sheets;
+    } catch (e) {
+      debugPrint('Error in manual XLSX extraction: $e');
+      return {};
     }
   }
 

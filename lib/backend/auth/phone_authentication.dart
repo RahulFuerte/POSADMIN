@@ -86,7 +86,7 @@ class PhoneAuthentication {
   }
 
   Future<String> _afterSendingOtp(
-    PhoneAuthCredential phoneAuthCredential,
+    PhoneAuthCredential phoneAuthCredential,  
   ) async {
     lp.startProcessing();
     String result = "Login successful.";
